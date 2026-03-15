@@ -1,0 +1,24 @@
+{
+  "entities": {
+    "WeaponActivity": {
+      "title": "Weapon Activity",
+      "description": "Daily snapshot of market activity for a specific weapon.",
+      "type": "object",
+      "properties": {
+        "weaponId": { "type": "string", "description": "The url_name of the weapon." },
+        "weaponName": { "type": "string", "description": "The display name of the weapon." },
+        "date": { "type": "string", "description": "The date in YYYY-MM-DD format." },
+        "bidCount": { "type": "integer", "description": "Number of active auctions with bids." },
+        "listingCount": { "type": "integer", "description": "Total number of active auctions." },
+        "lastUpdated": { "type": "string", "format": "date-time", "description": "When this record was last updated." }
+      },
+      "required": ["weaponId", "weaponName", "date", "bidCount", "listingCount", "lastUpdated"]
+    }
+  },
+  "firestore": {
+    "/weapon_activity/{activityId}": {
+      "schema": "WeaponActivity",
+      "description": "Collection of daily market activity snapshots."
+    }
+  }
+}

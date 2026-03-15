@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-warframe-gold: #c89b3c;
+  --color-warframe-blue: #00aaff;
+  --color-warframe-bg: #0a0a0c;
+  --color-warframe-card: #151518;
+}
+
+@layer base {
+  body {
+    @apply bg-warframe-bg text-gray-100 font-sans antialiased;
+  }
+}
+
+.riven-card-gradient {
+  background: linear-gradient(135deg, rgba(200, 155, 60, 0.1) 0%, rgba(21, 21, 24, 1) 100%);
+}
+
