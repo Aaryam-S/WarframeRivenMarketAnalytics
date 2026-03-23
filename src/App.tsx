@@ -3,7 +3,7 @@ import { warframeMarketService } from './services/warframeMarket';
 import { RivenItem, RivenAttribute, Auction } from './types';
 import { RivenStats } from './components/RivenStats';
 import { AuctionList } from './components/AuctionList';
-import { Search, Loader2, Info, AlertCircle, ChevronRight, LayoutGrid, BarChart2, X, ChevronDown, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Search, Loader2, Info, AlertCircle, ChevronRight, LayoutGrid, BarChart2, X, ChevronDown, LogIn, LogOut, User as UserIcon, Zap, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -28,8 +28,11 @@ export default function App() {
   const [searching, setSearching] = useState(false);
   const [view, setView] = useState<'list' | 'stats'>('list');
   const [onlyWithBids, setOnlyWithBids] = useState(false);
+  const [saleType, setSaleType] = useState<'all' | 'direct' | 'auction'>('all');
   const [positiveFilters, setPositiveFilters] = useState<string[]>([]);
   const [negativeFilter, setNegativeFilter] = useState<string | null>(null);
+  const [polarityFilter, setPolarityFilter] = useState<string | null>(null);
+  const [maxRollsFilter, setMaxRollsFilter] = useState<number | ''>('');
 
   useEffect(() => {
     testConnection();
@@ -92,6 +95,8 @@ export default function App() {
     setSearchQuery('');
     setPositiveFilters([]);
     setNegativeFilter(null);
+    setPolarityFilter(null);
+    setMaxRollsFilter('');
     setSearching(true);
     try {
       const results = await warframeMarketService.searchAuctions(item.url_name);
@@ -111,6 +116,12 @@ export default function App() {
       filtered = filtered.filter(a => (a.top_bid && a.top_bid > 0));
     }
 
+    if (saleType === 'direct') {
+      filtered = filtered.filter(a => a.is_direct_sell);
+    } else if (saleType === 'auction') {
+      filtered = filtered.filter(a => !a.is_direct_sell);
+    }
+
     if (positiveFilters.length > 0) {
       filtered = filtered.filter(auction => {
         const auctionPositives = auction.item.attributes.filter(attr => attr.positive).map(attr => attr.url_name);
@@ -125,8 +136,16 @@ export default function App() {
       });
     }
 
+    if (polarityFilter) {
+      filtered = filtered.filter(auction => auction.item.polarity === polarityFilter);
+    }
+
+    if (maxRollsFilter !== '') {
+      filtered = filtered.filter(auction => auction.item.re_rolls <= Number(maxRollsFilter));
+    }
+
     return filtered;
-  }, [auctions, onlyWithBids, positiveFilters, negativeFilter]);
+  }, [auctions, onlyWithBids, saleType, positiveFilters, negativeFilter, polarityFilter, maxRollsFilter]);
 
   const togglePositiveFilter = (urlName: string) => {
     setPositiveFilters(prev => {
@@ -325,21 +344,34 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-warframe-card/50 border border-white/5 p-3 rounded-2xl w-fit">
-              <input
-                type="checkbox"
-                id="onlyWithBids"
-                checked={onlyWithBids}
-                onChange={(e) => setOnlyWithBids(e.target.checked)}
-                className="w-4 h-4 accent-warframe-gold cursor-pointer"
-              />
-              <label htmlFor="onlyWithBids" className="text-sm text-gray-400 cursor-pointer select-none">
-                Only show listings with active bids
-              </label>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 bg-warframe-card/50 border border-white/5 p-3 rounded-2xl w-fit">
+                <input
+                  type="checkbox"
+                  id="onlyWithBids"
+                  checked={onlyWithBids}
+                  onChange={(e) => setOnlyWithBids(e.target.checked)}
+                  className="w-4 h-4 accent-warframe-gold cursor-pointer"
+                />
+                <label htmlFor="onlyWithBids" className="text-sm text-gray-400 cursor-pointer select-none">
+                  Only show listings with active bids
+                </label>
+              </div>
+              <div className="flex items-center gap-2 bg-warframe-card/50 border border-white/5 p-2 rounded-2xl w-fit">
+                <select
+                  value={saleType}
+                  onChange={(e) => setSaleType(e.target.value as 'all' | 'direct' | 'auction')}
+                  className="px-3 py-1 bg-transparent border-none text-sm font-medium outline-none cursor-pointer text-white"
+                >
+                  <option value="all" className="bg-gray-900 text-white">All Types</option>
+                  <option value="direct" className="bg-gray-900 text-white">Direct Sales</option>
+                  <option value="auction" className="bg-gray-900 text-white">Auctions</option>
+                </select>
+              </div>
             </div>
 
             {/* Stat Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Positive Stats Dropdown */}
               <div className="bg-warframe-card border border-white/10 rounded-2xl p-4 space-y-3">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -347,7 +379,7 @@ export default function App() {
                 </h3>
                 <div className="relative">
                   <select
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-sm appearance-none focus:outline-none focus:border-warframe-blue/50 transition-all cursor-pointer"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-sm appearance-none focus:outline-none focus:border-warframe-blue/50 transition-all cursor-pointer text-white"
                     onChange={(e) => {
                       if (e.target.value) {
                         togglePositiveFilter(e.target.value);
@@ -356,12 +388,12 @@ export default function App() {
                     }}
                     value=""
                   >
-                    <option value="" disabled>Add positive stat...</option>
+                    <option value="" disabled className="bg-gray-900 text-white">Add positive stat...</option>
                     {attributes
                       .filter(a => !a.search_only && !positiveFilters.includes(a.url_name))
                       .sort((a, b) => getAttrLabel(a).localeCompare(getAttrLabel(b)))
                       .map(attr => (
-                        <option key={attr.id} value={attr.url_name}>
+                        <option key={attr.id} value={attr.url_name} className="bg-gray-900 text-white">
                           {getAttrLabel(attr)}
                         </option>
                       ))}
@@ -393,16 +425,16 @@ export default function App() {
                 </h3>
                 <div className="relative">
                   <select
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-sm appearance-none focus:outline-none focus:border-red-500/50 transition-all cursor-pointer"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-sm appearance-none focus:outline-none focus:border-red-500/50 transition-all cursor-pointer text-white"
                     value={negativeFilter || ""}
                     onChange={(e) => setNegativeFilter(e.target.value || null)}
                   >
-                    <option value="">None (Any negative)</option>
+                    <option value="" className="bg-gray-900 text-white">None (Any negative)</option>
                     {attributes
                       .filter(a => !a.search_only)
                       .sort((a, b) => getAttrLabel(a).localeCompare(getAttrLabel(b)))
                       .map(attr => (
-                        <option key={attr.id} value={attr.url_name}>
+                        <option key={attr.id} value={attr.url_name} className="bg-gray-900 text-white">
                           {getAttrLabel(attr)}
                         </option>
                       ))}
@@ -414,6 +446,66 @@ export default function App() {
                     <span className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg text-xs font-medium">
                       {getAttrLabel(attributes.find(a => a.url_name === negativeFilter)!) || negativeFilter}
                       <button onClick={() => setNegativeFilter(null)}>
+                        <X className="w-3 h-3 hover:text-white transition-colors" />
+                      </button>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Polarity Dropdown */}
+              <div className="bg-warframe-card border border-white/10 rounded-2xl p-4 space-y-3">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                  <Zap className="w-3 h-3" /> Polarity
+                </h3>
+                <div className="relative">
+                  <select
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-sm appearance-none focus:outline-none focus:border-warframe-gold/50 transition-all cursor-pointer text-white"
+                    value={polarityFilter || ""}
+                    onChange={(e) => setPolarityFilter(e.target.value || null)}
+                  >
+                    <option value="" className="bg-gray-900 text-white">Any</option>
+                    <option value="madurai" className="bg-gray-900 text-white">Madurai (V)</option>
+                    <option value="vazarin" className="bg-gray-900 text-white">Vazarin (D)</option>
+                    <option value="naramon" className="bg-gray-900 text-white">Naramon (-)</option>
+                    <option value="zenurik" className="bg-gray-900 text-white">Zenurik (=)</option>
+                    <option value="unairu" className="bg-gray-900 text-white">Unairu (R)</option>
+                    <option value="penjaga" className="bg-gray-900 text-white">Penjaga (Y)</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                </div>
+                {polarityFilter && (
+                  <div className="flex flex-wrap gap-2 min-h-[32px]">
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 bg-warframe-gold/20 border border-warframe-gold/30 text-warframe-gold rounded-lg text-xs font-medium capitalize">
+                      {polarityFilter}
+                      <button onClick={() => setPolarityFilter(null)}>
+                        <X className="w-3 h-3 hover:text-white transition-colors" />
+                      </button>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Max Rolls Input */}
+              <div className="bg-warframe-card border border-white/10 rounded-2xl p-4 space-y-3">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                  <RefreshCw className="w-3 h-3" /> Max Rolls
+                </h3>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Any"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-warframe-gold/50 transition-all text-white"
+                    value={maxRollsFilter}
+                    onChange={(e) => setMaxRollsFilter(e.target.value === '' ? '' : Number(e.target.value))}
+                  />
+                </div>
+                {maxRollsFilter !== '' && (
+                  <div className="flex flex-wrap gap-2 min-h-[32px]">
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 bg-warframe-gold/20 border border-warframe-gold/30 text-warframe-gold rounded-lg text-xs font-medium">
+                      ≤ {maxRollsFilter} Rolls
+                      <button onClick={() => setMaxRollsFilter('')}>
                         <X className="w-3 h-3 hover:text-white transition-colors" />
                       </button>
                     </span>
@@ -436,7 +528,7 @@ export default function App() {
             ) : (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {view === 'list' ? (
-                  <AuctionList auctions={displayedAuctions} attributes={attributes} />
+                  <AuctionList auctions={displayedAuctions} attributes={attributes} totalFetched={auctions.length} />
                 ) : (
                   <RivenStats auctions={displayedAuctions} weaponName={selectedWeapon.item_name} weaponId={selectedWeapon.url_name} />
                 )}

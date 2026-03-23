@@ -29,7 +29,7 @@ export interface Auction {
   buyout_price: number | null;
   starting_price: number;
   top_bid: number | null;
-  is_direct_sale: boolean;
+  is_direct_sell: boolean;
   owner: {
     ingame_name: string;
     status: string;
